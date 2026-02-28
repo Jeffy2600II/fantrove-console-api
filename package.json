@@ -1,0 +1,22 @@
+{
+  "name": "fantrove-console-api",
+  "version": "1.0.0",
+  "description": "Fantrove Console API - Cloudflare Workers + Supabase",
+  "main": "worker.js",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "logs": "wrangler tail"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "supabase",
+    "logging"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "wrangler": "^3.0.0"
+  }
+}
