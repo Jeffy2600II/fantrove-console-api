@@ -1,21 +1,19 @@
 {
   "name": "fantrove-console-api",
   "version": "1.0.0",
-  "description": "Fantrove Console API - Cloudflare Workers + Supabase",
+  "description": "Fantrove Console API - Private Cloudflare Workers",
   "main": "worker.js",
+  "private": true,
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "logs": "wrangler tail"
+    "logs": "wrangler tail",
+    "secret:url": "wrangler secret put SUPABASE_URL",
+    "secret:key": "wrangler secret put SUPABASE_ANON_KEY"
   },
-  "keywords": [
-    "cloudflare",
-    "workers",
-    "supabase",
-    "logging"
-  ],
-  "author": "",
-  "license": "MIT",
+  "keywords": [],
+  "author": "Private",
+  "license": "UNLICENSED",
   "devDependencies": {
     "wrangler": "^3.0.0"
   }

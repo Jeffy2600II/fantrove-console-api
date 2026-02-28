@@ -1,3 +1,6 @@
 name = "fantrove-console-api"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+
+# Secrets ต้องเพิ่มผ่าน wrangler secret put เท่านั้น
+# ไม่แสดงในโค้ด ไม่แสดงใน Git
