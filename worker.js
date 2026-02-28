@@ -1,29 +1,32 @@
 // ============================================
 // Cloudflare Worker - Fantrove Console API
-// หน้าที่: รับ logs จาก browser → ส่งไป Supabase
-// ไม่มีการลบ logs (ให้ Supabase pg_cron จัดการ)
 // ============================================
 
-// CORS headers สำหรับทุก response
 const CORS_HEADERS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': '*', // หรือใช้ 'https://fantrove.pages.dev'
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Max-Age': '86400',
 };
 
 export default {
   async fetch(request, env, ctx) {
-    // Handle preflight requests
+    // Handle preflight requests ก่อนเสมอ
     if (request.method === 'OPTIONS') {
-      return new Response(null, { headers: CORS_HEADERS });
+      return new Response(null, { 
+        status: 204,
+        headers: CORS_HEADERS 
+      });
     }
 
     const url = new URL(request.url);
     const path = url.pathname;
 
     try {
-      // Routing
       switch (true) {
+        case path === '/health':
+          return jsonResponse({ status: 'ok', timestamp: new Date().toISOString() });
+        
         case request.method === 'GET' && path === '/logs':
           return await handleGetLogs(request, env);
         
@@ -32,9 +35,6 @@ export default {
         
         case request.method === 'POST' && path === '/logs/batch':
           return await handlePostBatch(request, env);
-        
-        case request.method === 'GET' && path === '/health':
-          return jsonResponse({ status: 'ok', timestamp: new Date().toISOString() });
         
         default:
           return new Response('Not Found', { status: 404, headers: CORS_HEADERS });
@@ -46,17 +46,13 @@ export default {
   }
 };
 
-// ============================================
-// Handler Functions
-// ============================================
-
+// Handler functions เหมือนเดิม...
 async function handleGetLogs(request, env) {
   const url = new URL(request.url);
   const sessionId = url.searchParams.get('session');
   const limit = Math.min(parseInt(url.searchParams.get('limit')) || 100, 500);
-  const offset = parseInt(url.searchParams.get('offset')) || 0;
 
-  let query = `${env.SUPABASE_URL}/rest/v1/console_logs?select=*&order=created_at.desc&limit=${limit}&offset=${offset}`;
+  let query = `${env.SUPABASE_URL}/rest/v1/console_logs?select=*&order=created_at.desc&limit=${limit}`;
   
   if (sessionId) {
     query += `&session_id=eq.${encodeURIComponent(sessionId)}`;
@@ -71,7 +67,7 @@ async function handleGetLogs(request, env) {
   });
 
   if (!response.ok) {
-    throw new Error(`Supabase error: ${response.status} ${await response.text()}`);
+    throw new Error(`Supabase error: ${response.status}`);
   }
 
   const logs = await response.json();
@@ -81,9 +77,8 @@ async function handleGetLogs(request, env) {
 async function handlePostLog(request, env) {
   const body = await request.json();
   
-  // Validate required fields
   if (!body.level || !body.message) {
-    return jsonResponse({ error: 'Missing required fields: level, message' }, 400);
+    return jsonResponse({ error: 'Missing required fields' }, 400);
   }
 
   const payload = {
@@ -105,7 +100,7 @@ async function handlePostLog(request, env) {
       'apikey': env.SUPABASE_ANON_KEY,
       'Authorization': `Bearer ${env.SUPABASE_ANON_KEY}`,
       'Content-Type': 'application/json',
-      'Prefer': 'return=representation' // ขอข้อมูลที่ insert กลับมา
+      'Prefer': 'return=representation'
     },
     body: JSON.stringify(payload)
   });
@@ -122,11 +117,10 @@ async function handlePostLog(request, env) {
 async function handlePostBatch(request, env) {
   const body = await request.json();
   
-  if (!body.logs || !Array.isArray(body.logs) || body.logs.length === 0) {
-    return jsonResponse({ error: 'Missing or invalid logs array' }, 400);
+  if (!body.logs || !Array.isArray(body.logs)) {
+    return jsonResponse({ error: 'Invalid logs array' }, 400);
   }
 
-  // จำกัด batch size
   const logs = body.logs.slice(0, 100);
   
   const results = await Promise.allSettled(
@@ -144,7 +138,6 @@ async function handlePostBatch(request, env) {
   }, 201);
 }
 
-// Helper สำหรับ insert รายตัว
 async function insertSingleLog(env, log, headers) {
   const payload = {
     session_id: log.session_id || 'unknown',
@@ -177,10 +170,6 @@ async function insertSingleLog(env, log, headers) {
   return { success: true };
 }
 
-// ============================================
-// Utility Functions
-// ============================================
-
 function jsonResponse(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status: status,
@@ -190,4 +179,3 @@ function jsonResponse(data, status = 200) {
     }
   });
 }
-
